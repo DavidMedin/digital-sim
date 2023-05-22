@@ -1,0 +1,11 @@
+{
+    "C_Cpp.default.cppStandard": "c++20",
+    "spellright.language": [
+        "en-US-10-1."
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext"
+    ]
+}
