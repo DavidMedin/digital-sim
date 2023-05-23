@@ -43,7 +43,7 @@ struct Gate {
     }
 };
 
-std::vector<Gate> generate_circuit(unsigned int input_count, unsigned int output_count, unsigned int gate_count) {
+std::vector<Gate> generate_comb_gates(unsigned int input_count, unsigned int output_count, unsigned int gate_count) {
     srand(time(NULL));
     
     std::vector<Gate> gates(gate_count);
@@ -102,6 +102,19 @@ std::vector<Gate> generate_circuit(unsigned int input_count, unsigned int output
 
 // A chain is a chain of gates that can be done combinationally.
 typedef std::vector<Gate> Chain;
+
+void evaluate_chain(const std::vector<bool>* inputs, unsigned int node_count, Chain chain, std::pair<size_t,bool>* output) {
+    bool nodes[node_count];
+    for(int i = 0;i < inputs->size();i++) nodes[i] = (*inputs)[i];
+
+    std::pair<size_t,bool> last_value;
+    for(Gate gate : chain) {
+        bool result = gate.Eval( nodes[gate.inputs[0]], nodes[gate.inputs[1]] );
+        nodes[gate.node] = result;
+        last_value = std::pair( gate.node, result );
+    }
+    *output = last_value;
+}
 
 struct CombinationCircuit {
     // This data structure organizes the whole circuit as a 
@@ -181,25 +194,32 @@ struct CombinationCircuit {
     std::vector<std::pair<size_t,bool>> evalulate( std::vector<bool> inputs ) {
         assert(inputs.size() == input_count);
 
-        std::vector<std::pair<size_t,bool>> outputs;
-        bool nodes[node_count];
-        for(int i = 0;i < node_count ;i++) nodes[i] = false;
+        std::vector<std::pair<size_t,bool>> outputs(gate_chains.size());
 
-        // Fun fact: std::vector<bool>'s memory is not contiguous! Fuck!
-        for(int i = 0 ; i < inputs.size() ; i++) {//            ^
-            nodes[i] = inputs[i]; // I wish I could memcpy, but |
-        }
-
-        for( Chain chain : gate_chains ){
+        std::thread threads[gate_chains.size()];
+        for( int i = 0;i < gate_chains.size();i++ ){
 
             // Get the output of the last node of this chain, and it is the output.
-            std::pair<size_t,bool> last_value;
-            for(Gate gate : chain) {
-                bool result = gate.Eval( nodes[gate.inputs[0]], nodes[gate.inputs[1]] );
-                nodes[gate.node] = result;
-                last_value = std::pair( gate.node, result );
+            threads[i] = std::thread{ evaluate_chain, &inputs, node_count, gate_chains[i], &outputs[i] };
+        }
+        #ifdef DEBUG
+        std::cout << "Created " << gate_chains.size() << " threads\n";
+        #endif
+
+        unsigned int done = 0;
+        do{
+            done=0;
+            for(int i = 0;i < gate_chains.size();i++) {
+                if(threads[i].joinable()){
+                    done+=1;
+                }
             }
-            outputs.push_back(last_value);
+        }while(done != gate_chains.size());
+        #ifdef DEBUG
+        std::cout << "Threads have completed\n";
+        #endif
+        for(int i = 0;i < gate_chains.size();i++) {
+            threads[i].join();
         }
         
         return outputs;

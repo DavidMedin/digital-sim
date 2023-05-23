@@ -15,8 +15,6 @@ Please note! This is using C++20.
 // for measuring time
 #include <chrono>
 
-
-#define DEBUG // so it is easy to disable uncrucial code in sim.hpp
 #include "sim.hpp"
 
 
@@ -37,10 +35,10 @@ int main() {
     unsigned int gate_count;
     std::cin >> gate_count;
 
-    std::vector<Gate> new_gates = generate_circuit(input_count,output_count,gate_count);
+    std::vector<Gate> new_gates = generate_comb_gates(input_count,output_count,gate_count);
     CombinationCircuit circuit( input_count, new_gates );
 
-    bool inputs[input_count];
+    std::vector<bool>inputs(input_count);
     for(int i = 0;i < input_count;i++) {
         inputs[i] = static_cast<bool>(rand()%2);
     }
@@ -49,7 +47,7 @@ int main() {
     // time_point (automatic type variable) should be in nanoseconds.
     std::chrono::time_point time_before = clock.now();
     
-    auto results = circuit.evalulate( std::vector<bool>(inputs,inputs+input_count) );
+    auto results = circuit.evalulate( inputs );
 
     std::chrono::time_point time_after = clock.now();
     auto diff = time_after - time_before;
