@@ -14,10 +14,12 @@ This circuit must contain loops, otherwise it is a combinational sim (citation n
 #include <string>
 #include <algorithm>
 #include <assert.h>
+#include <cstdlib> // for random
+#include <time.h> // for time, for random.
 
-// to use memcpy
-#include <cstring>
+#include "helper_funcs.hpp"
 
+#define GATETYPE_COUNT 6 // The number of gate types.
 enum GateType {
     AND,OR,NOR,NAND,XOR,NOT
 };
@@ -28,7 +30,7 @@ struct Gate {
 
     // Doesn't use the 'inputs' field. User should use 'inputs' to
     //  determine what the inputs are.
-    inline bool Eval(bool input_1, bool input_2) {
+    inline const bool Eval(const bool input_1,const bool input_2) const {
         switch (type) {
             case AND : return input_1 & input_2;
             case OR : return input_1 | input_2;
@@ -40,6 +42,63 @@ struct Gate {
         return new std::exception();
     }
 };
+
+std::vector<Gate> generate_circuit(unsigned int input_count, unsigned int output_count, unsigned int gate_count) {
+    srand(time(NULL));
+    
+    std::vector<Gate> gates(gate_count);
+    unsigned int not_gate_count = rand() % std::max(1U , gate_count / GATETYPE_COUNT);
+    unsigned int gates_left = gate_count - not_gate_count;
+    unsigned int column_size = output_count;
+    size_t column_start = input_count; // column_start is a node.
+
+    while( gates_left > column_size ) {
+        gates_left -= column_size;
+        column_start += column_size;
+
+        for(int i = 0; i < column_size ; i++){
+
+            // https://stackoverflow.com/questions/332030/when-should-static-cast-dynamic-cast-const-cast-and-reinterpret-cast-be-used
+            // This is a good reference for what these c++ casts are.
+            GateType random_gate_type = static_cast<GateType>( rand() % (GATETYPE_COUNT-1) ); // -1 to exclude the NOT gate.
+            
+            size_t new_gate_1 = wrap(column_start,column_start+gates_left, column_start + i*2);
+            size_t new_gate_2 = wrap(column_start,column_start+gates_left, column_start + i*2 + 1);
+            gates[column_start-input_count-column_size+i] = Gate{
+                .type = random_gate_type,
+                .inputs = { new_gate_1, new_gate_2 }
+            };
+
+        }
+
+        column_size *= 2;
+    }
+
+    for(int i = 0; i < gates_left ; i++ ) {
+        GateType random_gate_type = static_cast<GateType>( rand() % (GATETYPE_COUNT-1) ); // -1 to exclude the NOT gate.
+        size_t input_1 = static_cast<size_t>(rand() % input_count);
+        size_t input_2 = static_cast<size_t>(rand() % input_count);
+        
+        gates[gate_count-not_gate_count-gates_left+i] = Gate {
+            .type = random_gate_type,
+            .inputs = {input_1, input_2}
+        };
+    }
+
+    size_t first_not_gate = gate_count - not_gate_count;
+    // Time to make add the NOT gates.
+    for(int i = 0;i < not_gate_count;i++){
+        size_t gate = static_cast<size_t>( rand() % (first_not_gate) );
+        size_t gate_input = static_cast<size_t>(rand()%2);
+        size_t src_gate = gates[gate].inputs[gate_input]; // save for later
+
+        gates[gate].inputs[gate_input] = first_not_gate+i +input_count;
+        
+        gates[first_not_gate+i] = Gate { .type = NOT, .inputs = {src_gate} };
+    }
+
+    return gates;
+}
 
 // A chain is a chain of gates that can be done combinationally.
 typedef std::vector<Gate> Chain;
@@ -62,7 +121,10 @@ struct CombinationCircuit {
 
         // Circuit outputs are gates whos output node is not referenced.
         node_count = input_count + gates.size();
-        bool nodes_used[node_count] = {false};
+        bool nodes_used[node_count];
+        for(int i = 0;i < node_count ;i++) nodes_used[i] = false;
+
+        
         for (int i = 0 ; i < gates.size() ; i++) {
             nodes_used[ gates[i].inputs[0] ] = true;
             nodes_used[ gates[i].inputs[1] ] = true;
@@ -120,7 +182,8 @@ struct CombinationCircuit {
         assert(inputs.size() == input_count);
 
         std::vector<std::pair<size_t,bool>> outputs;
-        bool nodes[node_count] = {false};
+        bool nodes[node_count];
+        for(int i = 0;i < node_count ;i++) nodes[i] = false;
 
         // Fun fact: std::vector<bool>'s memory is not contiguous! Fuck!
         for(int i = 0 ; i < inputs.size() ; i++) {//            ^
