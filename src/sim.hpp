@@ -223,6 +223,6 @@ struct CombinationCircuit {
 
     // Checks that there are no loops or other illegal things.
     bool check_health() {
-        
+        return true;
     }
 };

@@ -5,9 +5,16 @@ Please note! This is using C++20.
 #include <iostream>
 #include <thread>
 #include <format>
+#include <string>
+#include <string_view>
 
+// for randomness
 #include <random>
 #include <time.h>
+
+// for measuring time
+#include <chrono>
+
 
 #define DEBUG // so it is easy to disable uncrucial code in sim.hpp
 #include "sim.hpp"
@@ -18,19 +25,19 @@ void thread_1(int arg1) {
 }
 
 int main() {
-    srand(time(NULL));
-    // CombinationCircuit circuit({true,false}, "out1 = in1+in2");
+    srand(time(NULL)); // I know, later I also call srand like this, whatever.
 
-    // std::cout << "I am the main thread!\n";
-    // std::thread first_thread = std::thread(thread_1,3);
-    // std::cout << "Just started thread one!\n";
-    // first_thread.detach(); // Allows the thread to execute.
+    std::cout << "Input count : ";
+    unsigned int input_count;
+    std::cin >> input_count;
+    std::cout << "Output count : ";
+    unsigned int output_count;
+    std::cin >> output_count;
+    std::cout << "Gate count : ";
+    unsigned int gate_count;
+    std::cin >> gate_count;
 
-    // std::vector<Gate> half_adder{ Gate{XOR,{0,1}}, Gate{AND,{0,1}} };
-    // std::vector full_adder{ Gate{XOR, {0,1}}, Gate{AND, {0,1}}, Gate{AND,{3,2}}, Gate{XOR,{3,2}}, Gate{OR,{5,4}} };
-
-    unsigned int input_count = 10;
-    std::vector<Gate> new_gates = generate_circuit(input_count,40,100);
+    std::vector<Gate> new_gates = generate_circuit(input_count,output_count,gate_count);
     CombinationCircuit circuit( input_count, new_gates );
 
     bool inputs[input_count];
@@ -38,9 +45,22 @@ int main() {
         inputs[i] = static_cast<bool>(rand()%2);
     }
     
+    std::chrono::steady_clock clock;
+    // time_point (automatic type variable) should be in nanoseconds.
+    std::chrono::time_point time_before = clock.now();
+    
     auto results = circuit.evalulate( std::vector<bool>(inputs,inputs+input_count) );
-    for(auto pair : results){
-        std::cout << "Node " << pair.first << ", state " << pair.second << "\n";
-    }
+
+    std::chrono::time_point time_after = clock.now();
+    auto diff = time_after - time_before;
+
+    // This might look like an error. But VSCode is having a hissy fit.
+    // Track this linting problem here : https://github.com/microsoft/vscode-cpptools/issues/10938
+    std::cout << std::format("Input: {}, Output: {}, Gates: {}\n",input_count,output_count,gate_count);
+    std::cout << std::format("This took {}, or {}\n",diff, std::chrono::duration_cast<std::chrono::microseconds>(diff));
+
+    // for(auto pair : results){
+    //     std::cout << "Node " << pair.first << ", state " << pair.second << "\n";
+    // }
     return 0;
 }

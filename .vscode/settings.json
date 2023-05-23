@@ -11,6 +11,7 @@
     "files.associations": {
         "random": "cpp",
         "limits": "cpp",
-        "semaphore": "cpp"
+        "semaphore": "cpp",
+        "format": "cpp"
     }
 }
