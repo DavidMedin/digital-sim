@@ -44,18 +44,39 @@ int main() {
     }
     
     std::chrono::steady_clock clock;
+
+    std::cout << "With threads ==============\n";
     // time_point (automatic type variable) should be in nanoseconds.
     std::chrono::time_point time_before = clock.now();
     
-    auto results = circuit.evalulate( inputs );
+    auto results = circuit.evalulate( inputs, {.use_threads = true} );
 
     std::chrono::time_point time_after = clock.now();
-    auto diff = time_after - time_before;
+    auto thread_diff = time_after - time_before;
 
     // This might look like an error. But VSCode is having a hissy fit.
     // Track this linting problem here : https://github.com/microsoft/vscode-cpptools/issues/10938
     std::cout << std::format("Input: {}, Output: {}, Gates: {}\n",input_count,output_count,gate_count);
-    std::cout << std::format("This took {}, or {}\n",diff, std::chrono::duration_cast<std::chrono::microseconds>(diff));
+    std::cout << std::format("This took {}, or {}\n",thread_diff, std::chrono::duration_cast<std::chrono::microseconds>(thread_diff));
+    std::cout << "\n=====================\n";
+
+
+    std::cout << "Without threads ==============\n";
+    // time_point (automatic type variable) should be in nanoseconds.
+    time_before = clock.now();
+    
+    results = circuit.evalulate( inputs, {.use_threads = false} );
+
+    time_after = clock.now();
+    auto no_thread_diff = time_after - time_before;
+
+    // This might look like an error. But VSCode is having a hissy fit.
+    // Track this linting problem here : https://github.com/microsoft/vscode-cpptools/issues/10938
+    std::cout << std::format("Input: {}, Output: {}, Gates: {}\n",input_count,output_count,gate_count);
+    std::cout << std::format("This took {}, or {}\n",no_thread_diff, std::chrono::duration_cast<std::chrono::microseconds>(no_thread_diff));
+    std::cout << "\n=====================\n";
+
+    std::cout << std::format("With threads is {} faster.\n", std::chrono::duration_cast<std::chrono::microseconds>(no_thread_diff-thread_diff));
 
     // for(auto pair : results){
     //     std::cout << "Node " << pair.first << ", state " << pair.second << "\n";
